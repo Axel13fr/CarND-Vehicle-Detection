@@ -1,2 +1,6 @@
 
 \.idea/
+
+train_images/
+
+__pycache__/

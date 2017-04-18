@@ -1,15 +1,16 @@
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+import time
 import numpy as np
 import glob
 
 def read_images(folder):
-    images = glob.glob(folder + '/*.jpeg')
+    images = glob.glob(folder + '/*/*/*.png')
     cars = []
     notcars = []
 
     for image in images:
-        if 'image' in image or 'extra' in image:
+        if 'non-vehicles' in image:
             notcars.append(image)
         else:
             cars.append(image)
@@ -47,13 +48,28 @@ def train(scaled_X,y):
     X_train, X_test, y_train, y_test = train_test_split(
         scaled_X, y, test_size=0.2, random_state=rand_state)
 
-    from sklearn.svm import LinearSVC
-    # Use a linear SVC (support vector classifier)
-    svc = LinearSVC()
-    # Train the SVC
-    svc.fit(X_train, y_train)
+    from sklearn import svm
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.model_selection import StratifiedShuffleSplit
 
-    parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
-    svr = svm.SVC()
-    clf = grid_search.GridSearchCV(svr, parameters)
-    clf.fit(iris.data, iris.target)
+    # Grid search over a set of parameters
+    C_range = np.logspace(-2, 10, 13)
+    gamma_range = np.logspace(-9, 3, 13)
+    #parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
+    parameters = {'C': C_range}
+    # Check the training time for the SVC
+    t = time.time()
+
+    # Gridsearch will do a 3-fold cross validation by default
+    grid = GridSearchCV(svm.LinearSVC(), parameters,cv=None)
+    grid.fit(scaled_X, y)
+    t2 = time.time()
+    print(round(t2 - t, 2), 'Seconds to train & search grid params')
+    print("The best parameters are %s with a score of %0.2f"
+          % (grid.best_params_, grid.best_score_))
+
+    # Check the score of the SVC
+    print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
+
+
+    return grid
