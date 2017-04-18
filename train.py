@@ -74,16 +74,16 @@ def load_features():
         settings = features["settings"]
         settings.print()
 
-        scaled_X, y = combine_normalize(car_features, notcar_features)
+        scaled_X, y,X_scaler = combine_normalize(car_features, notcar_features)
         print("Scaled feature vector size: " + str(scaled_X.shape))
-    return scaled_X,y
+    return scaled_X,y,settings,X_scaler
 
 
 class Model():
     def __init__(self):
         self.model = None
 
-    def load(self,pickle_file):
+    def load(self):
         with open('svm/model.p', 'rb') as handle:
             pick = pickle.load(handle)
             self.model = pick["model"]
@@ -102,8 +102,8 @@ class Model():
         from sklearn.model_selection import TimeSeriesSplit
 
         # Grid search over a set of parameters
-        C_range = np.logspace(-5, -1, 10)
-        gamma_range = np.logspace(-9, 3, 10)
+        C_range = np.logspace(-5, -1, 6)
+        gamma_range = np.logspace(-9, 3, 13)
         #parameters = {'kernel': ('linear', 'rbf'), 'C': C_range,'gamma'=gamma_range}
         parameters = {'C': C_range}
         # Check the training time for the SVC
@@ -120,7 +120,7 @@ class Model():
               % (grid.best_params_, grid.best_score_))
 
         # Check the score of the SVC
-        print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
+        #print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
 
         self.model = grid
 
