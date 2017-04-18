@@ -1,8 +1,7 @@
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import time
-import numpy as np
 import glob
+import pickle
+from feature_extraction import *
 
 def read_images(folder):
     images = glob.glob(folder + '/*/*/*.png')
@@ -40,36 +39,95 @@ def data_look(car_list, notcar_list):
     # Return data_dict
     return data_dict
 
-def train(scaled_X,y):
+def generate_features():
 
-    from sklearn.model_selection import train_test_split
-    # Split up data into randomized training and test sets
-    rand_state = np.random.randint(0, 100)
-    X_train, X_test, y_train, y_test = train_test_split(
-        scaled_X, y, test_size=0.2, random_state=rand_state)
+    # Read in car and non-car images
+    cars, notcars = read_images("train_images")
+    data_look(cars, notcars)
 
-    from sklearn import svm
-    from sklearn.model_selection import GridSearchCV
-    from sklearn.model_selection import StratifiedShuffleSplit
+    # Different Feature Extraction settings : see ExtractSettings in feature_extraction.py
+    settings = ExtractSettings()
 
-    # Grid search over a set of parameters
-    C_range = np.logspace(-2, 10, 13)
-    gamma_range = np.logspace(-9, 3, 13)
-    #parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
-    parameters = {'C': C_range}
-    # Check the training time for the SVC
-    t = time.time()
+    notcar_features = extract_features(notcars, settings,
+                                       spatial_feat=True, hist_feat=True, hog_feat=True)
+    car_features = extract_features(cars, settings,
+                                    spatial_feat=True, hist_feat=True, hog_feat=True)
+    settings.print()
 
-    # Gridsearch will do a 3-fold cross validation by default
-    grid = GridSearchCV(svm.LinearSVC(), parameters,cv=None)
-    grid.fit(scaled_X, y)
-    t2 = time.time()
-    print(round(t2 - t, 2), 'Seconds to train & search grid params')
-    print("The best parameters are %s with a score of %0.2f"
-          % (grid.best_params_, grid.best_score_))
+    # Save into pickle file for retraining !
+    feat_pickle = {}
+    feat_pickle["notcar_features"] = notcar_features
+    feat_pickle["car_features"] = car_features
+    feat_pickle['settings'] = settings
+    pickle.dump(feat_pickle, open("features/features.p", "wb"))
 
-    # Check the score of the SVC
-    print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
+    scaled_X, y = combine_normalize(car_features, notcar_features)
+    print("Scaled feature vector size: " + str(scaled_X.shape))
+
+    return scaled_X, y
+
+def load_features():
+    with open('features/features.p', 'rb') as handle:
+        features = pickle.load(handle)
+        notcar_features = features["notcar_features"]
+        car_features = features["car_features"]
+        settings = features["settings"]
+        settings.print()
+
+        scaled_X, y = combine_normalize(car_features, notcar_features)
+        print("Scaled feature vector size: " + str(scaled_X.shape))
+    return scaled_X,y
 
 
-    return grid
+class Model():
+    def __init__(self):
+        self.model = None
+
+    def load(self,pickle_file):
+        with open('svm/model.p', 'rb') as handle:
+            pick = pickle.load(handle)
+            self.model = pick["model"]
+
+    def train(self,scaled_X,y):
+
+        from sklearn.model_selection import train_test_split
+        # Split up data into randomized training and test sets
+        rand_state = np.random.randint(0, 100)
+        X_train, X_test, y_train, y_test = train_test_split(
+            scaled_X, y, test_size=0.2, random_state=rand_state)
+
+        from sklearn import svm
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.model_selection import StratifiedShuffleSplit
+        from sklearn.model_selection import TimeSeriesSplit
+
+        # Grid search over a set of parameters
+        C_range = np.logspace(-5, -1, 10)
+        gamma_range = np.logspace(-9, 3, 10)
+        #parameters = {'kernel': ('linear', 'rbf'), 'C': C_range,'gamma'=gamma_range}
+        parameters = {'C': C_range}
+        # Check the training time for the SVC
+        t = time.time()
+
+        # Gridsearch with custom split
+        #tscv = TimeSeriesSplit(n_splits=3)
+        scv = StratifiedShuffleSplit(n_splits=5, test_size=0.2,random_state=rand_state)
+        grid = GridSearchCV(svm.LinearSVC(), parameters, cv=scv)
+        grid.fit(scaled_X, y)
+        t2 = time.time()
+        print(round(t2 - t, 2), 'Seconds to train & search grid params')
+        print("The best parameters are %s with a score of %0.2f"
+              % (grid.best_params_, grid.best_score_))
+
+        # Check the score of the SVC
+        print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
+
+        self.model = grid
+
+        # Save the trained model
+        svm_pickle = {}
+        svm_pickle['model'] = grid
+        pickle.dump(svm_pickle, open("svm/model.p", "wb"))
+
+    def predict(self,X):
+        return self.model.predict(X)
