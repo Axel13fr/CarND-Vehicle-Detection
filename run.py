@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from feature_extraction import *
 from slidding_windows import *
 from train import *
+from pipeline import *
 
 
 #read_images("train_images")
@@ -23,11 +24,11 @@ draw_image = np.copy(image)
 image = image.astype(np.float32)/255
 
 # Generate windows
-windows_1 = slide_window(image, x_start_stop=[None, None], y_start_stop=[350,500],
+windows_1 = slide_window(image.shape, x_start_stop=[None, None], y_start_stop=[350,500],
                     xy_window=(64, 64), xy_overlap=(0.5, 0.5))
-windows_2 = slide_window(image, x_start_stop=[20, None], y_start_stop=[400,550],
+windows_2 = slide_window(image.shape, x_start_stop=[20, None], y_start_stop=[400,600],
                     xy_window=(128, 128), xy_overlap=(0.6, 0.6))
-windows_3 = slide_window(image, x_start_stop=[20, None], y_start_stop=[450,None],
+windows_3 = slide_window(image.shape, x_start_stop=[20, None], y_start_stop=[450,None],
                     xy_window=(192, 192), xy_overlap=(0.5, 0.7))
 
 
@@ -52,3 +53,5 @@ window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
 plt.figure()
 plt.imshow(window_img)
 plt.show()
+
+run_video(svc,X_scaler,settings)

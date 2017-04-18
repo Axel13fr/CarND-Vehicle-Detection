@@ -6,17 +6,17 @@ from feature_extraction import *
 # start and stop positions in both x and y,
 # window size (x and y dimensions),
 # and overlap fraction (for both x and y)
-def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
+def slide_window(img_shape, x_start_stop=[None, None], y_start_stop=[None, None],
                  xy_window=(64, 64), xy_overlap=(0.5, 0.5)):
     # If x and/or y start/stop positions not defined, set to image size
     if x_start_stop[0] == None:
         x_start_stop[0] = 0
     if x_start_stop[1] == None:
-        x_start_stop[1] = img.shape[1]
+        x_start_stop[1] = img_shape[1]
     if y_start_stop[0] == None:
         y_start_stop[0] = 0
     if y_start_stop[1] == None:
-        y_start_stop[1] = img.shape[0]
+        y_start_stop[1] = img_shape[0]
     # Compute the span of the region to be searched
     xspan = x_start_stop[1] - x_start_stop[0]
     yspan = y_start_stop[1] - y_start_stop[0]
