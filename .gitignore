@@ -4,3 +4,5 @@
 train_images/
 
 __pycache__/
+
+features/features\.p
