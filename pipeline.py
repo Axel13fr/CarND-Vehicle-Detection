@@ -2,15 +2,17 @@ from slidding_windows import *
 from feature_extraction import *
 from object_extraction import *
 from collections import deque
+from line_pipeline import *
 
 
 class Pipeline():
-    def __init__(self,svc,Scaler,settings,debugView=True):
+    def __init__(self,svc,Scaler,settings,debugView=True,line_pipeline=None):
         self.svc = svc
         self.scaler = Scaler
         self.settings = settings
         self.debugView = debugView
-
+        self.line_detection = line_pipeline
+        #FIFO with 8 elements max
         self.boxes_history = deque(maxlen=8)
 
         img_shape = (720, 1280, 3)
@@ -25,6 +27,16 @@ class Pipeline():
 
     # Define a single function that can extract features using hog sub-sampling and make predictions
     def find_cars(self,img, ystart, ystop, xstart,scale):
+        """
+
+        :param img: input image
+        :param ystart: search will be done starting from this coordinate
+        :param ystop: search will send at this coordinate
+        :param xstart: search will be done starting from this (used to recenter the search area)
+        :param scale: reduces the whole image while keeping the same window size: used to increase
+                      search window size
+        :return: a list of all windows where cars were detected
+        """
         # Settings shortcuts
         spatial_size = (self.settings.spatial, self.settings.spatial)
         hist_bins = self.settings.histbin
@@ -103,7 +115,7 @@ class Pipeline():
 
     def filter_detections(self,img_rgb,boxes):
 
-        # Add boxes to history
+        # Add boxes to history and remove the oldest if more than FIFO size
         self.boxes_history.append(boxes)
 
         # Produce heat map using boxes history : Add heat to each box in box list
@@ -124,15 +136,16 @@ class Pipeline():
         return draw_img
 
     def process(self,img_rgb):
+        # Apply lane detection if available:
+        if self.line_detection:
+            draw_image = self.line_detection.process(img_rgb)
+        else:
+            draw_image = np.copy(img_rgb)
+
         # Scaling back to [0,1] just as when from video file
         img_rgb = img_rgb.astype(np.float32) / 255
-        draw_image = np.copy(img_rgb)*255
 
-        #detections = self.find_cars(img_rgb, 400, 550, 20, 1)
-        #detections = self.find_cars(img_rgb, 370, 650, 40, 1.3)
-        #detections += self.find_cars(img_rgb, 400, 700, 60, 1.8)
-        #detections = self.find_cars(img_rgb, 370, 650, 40, 1.2)
-
+        # Detect cars with 2 different slidding window sizes: 64*1.3 and 64*1.5
         detections = self.find_cars(img_rgb, 400, 650, 40, 1.3)
         detections += self.find_cars(img_rgb, 400, 700, 30, 1.5)
 
@@ -146,7 +159,7 @@ def run_video(svc,Scaler,settings):
     from moviepy.editor import VideoFileClip
     output = 'project_output.mp4'
     clip2 = VideoFileClip('project_video.mp4')
-
-    pipeline = Pipeline(svc,Scaler,settings,debugView=False)
+    line_pipeline = LinePipeline(debugView=False)
+    pipeline = Pipeline(svc,Scaler,settings,debugView=False,line_pipeline=line_pipeline)
     challenge_clip = clip2.fl_image(pipeline.process)
     challenge_clip.write_videofile(output, audio=False)

@@ -50,9 +50,15 @@ def convert_color(img, color_space):
 
 # Define a function to compute color histogram features
 def color_hist(img_hsv, nbins=32, bins_range=(0, 256)):
-    # Optimal color space for color hist is HSV
-    #img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
-    # Compute the histogram of the color channels separately
+    """
+    Optimal color space for color hist is HSV based on SVM detection rate
+
+    :param img_hsv: image in HSV color space
+    :param nbins: number of bins used for histogram
+    :param bins_range: min & max of the histogram
+    :return: vector containing histogram counts for each 3 channels
+    """
+        # Compute the histogram of the color channels separately
     channel1_hist = np.histogram(img_hsv[:,:,0], bins=nbins, range=bins_range)
     channel2_hist = np.histogram(img_hsv[:,:,1], bins=nbins, range=bins_range)
     channel3_hist = np.histogram(img_hsv[:,:,2], bins=nbins, range=bins_range)
@@ -62,9 +68,12 @@ def color_hist(img_hsv, nbins=32, bins_range=(0, 256)):
     return hist_features
 
 
-# Pass the color_space flag as 3-letter all caps string
-# like 'HSV' or 'LUV' etc.
+
 def bin_spatial(img, color_space='RGB', size=(32, 32)):
+    """
+    reduces the image in size and change the color space if needed
+    """
+
     # Convert image to new color space (if specified)
     feature_image = convert_color(img,color_space)
     # Use cv2.resize().ravel() to create the feature vector
