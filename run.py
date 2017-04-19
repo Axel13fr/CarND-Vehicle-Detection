@@ -27,20 +27,20 @@ image = image.astype(np.float32)/255
 windows_1 = slide_window(image.shape, x_start_stop=[None, None], y_start_stop=[350,500],
                     xy_window=(64, 64), xy_overlap=(0.5, 0.5))
 windows_2 = slide_window(image.shape, x_start_stop=[20, None], y_start_stop=[400,600],
-                    xy_window=(128, 128), xy_overlap=(0.6, 0.6))
+                    xy_window=(96, 96), xy_overlap=(0.6, 0.6))
 windows_3 = slide_window(image.shape, x_start_stop=[20, None], y_start_stop=[450,None],
                     xy_window=(192, 192), xy_overlap=(0.5, 0.7))
 
 
-f, (ax1, ax2, ax3) = plt.subplots(3,sharex=True, sharey=True)
-ax1.imshow(draw_boxes(box_image,windows_1,color=(0, 255, 0), thick=6))
+#f, (ax1, ax2, ax3) = plt.subplots(3,sharex=True, sharey=True)
+#ax1.imshow(draw_boxes(box_image,windows_1,color=(0, 255, 0), thick=6))
 #box_image = draw_boxes(box_image,windows_1,color=(0, 255, 0), thick=6)
 #box_image = draw_boxes(box_image,windows_2,color=(255, 0, 0), thick=6)
-ax2.imshow(draw_boxes(box_image,windows_2,color=(255, 0, 0), thick=6))
+#ax2.imshow(draw_boxes(box_image,windows_2,color=(255, 0, 0), thick=6))
 #box_image = draw_boxes(box_image,windows_3,color=(0, 0, 255), thick=6)
-ax3.imshow(draw_boxes(box_image,windows_3,color=(0, 0, 255), thick=6))
-f.subplots_adjust(hspace=0)
-plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
+#ax3.imshow(draw_boxes(box_image,windows_3,color=(0, 0, 255), thick=6))
+#f.subplots_adjust(hspace=0)
+#plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
 #plt.imshow(box_image)
 
 # All windows for search
@@ -52,6 +52,22 @@ hot_windows = search_windows(image, windows, svc, X_scaler, settings)
 window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
 plt.figure()
 plt.imshow(window_img)
+
+
+pipeline = Pipeline(svc,X_scaler,settings,debugView=True)
+
+result = pipeline.find_cars(image,400,550,20,1)
+plt.figure()
+plt.imshow(result)
+result = pipeline.find_cars(image,370,650,40,1.3)
+plt.figure()
+plt.imshow(result)
+result = pipeline.find_cars(image,400,700,60,1.8)
+plt.figure()
+plt.imshow(result)
+
+
+
 plt.show()
 
-run_video(svc,X_scaler,settings)
+#run_video(svc,X_scaler,settings)

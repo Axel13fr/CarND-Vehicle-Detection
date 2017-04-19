@@ -61,10 +61,10 @@ def generate_features():
     feat_pickle['settings'] = settings
     pickle.dump(feat_pickle, open("features/features.p", "wb"))
 
-    scaled_X, y = combine_normalize(car_features, notcar_features)
+    scaled_X, y, X_scaler = combine_normalize(car_features, notcar_features)
     print("Scaled feature vector size: " + str(scaled_X.shape))
 
-    return scaled_X, y
+    return scaled_X, y,
 
 def load_features():
     with open('features/features.p', 'rb') as handle:
