@@ -21,7 +21,7 @@ class ExtractSettings():
         self.hog_channel = 'SELECT'
         self.selected_chans = [0,1]
         self.orient = 6 # 9 gives 0.93, 6 gives 0.92
-        self.pix_per_cell = 12 # 8 gives 0,93, 10 gives 0.92
+        self.pix_per_cell = 12 # 8 gives 0,93, 10 gives 0.92, 12 gives 0.92
         self.cell_per_block = 1 # 1 gives 0.93, 2 gives 0.94
 
     def print(self):
@@ -49,13 +49,13 @@ def convert_color(img, color_space):
     return feature_image
 
 # Define a function to compute color histogram features
-def color_hist(img_rgb, nbins=32, bins_range=(0, 256)):
+def color_hist(img_hsv, nbins=32, bins_range=(0, 256)):
     # Optimal color space for color hist is HSV
-    img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
+    #img = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
     # Compute the histogram of the color channels separately
-    channel1_hist = np.histogram(img[:,:,0], bins=nbins, range=bins_range)
-    channel2_hist = np.histogram(img[:,:,1], bins=nbins, range=bins_range)
-    channel3_hist = np.histogram(img[:,:,2], bins=nbins, range=bins_range)
+    channel1_hist = np.histogram(img_hsv[:,:,0], bins=nbins, range=bins_range)
+    channel2_hist = np.histogram(img_hsv[:,:,1], bins=nbins, range=bins_range)
+    channel3_hist = np.histogram(img_hsv[:,:,2], bins=nbins, range=bins_range)
     # Concatenate the histograms into a single feature vector
     hist_features = np.concatenate((channel1_hist[0], channel2_hist[0], channel3_hist[0]))
     # Return the individual histograms, bin_centers and feature vector
@@ -75,16 +75,16 @@ def bin_spatial(img, color_space='RGB', size=(32, 32)):
 
 # Define a function to return HOG features and visualization
 def get_hog_features(img, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=True):
-    if vis == True:
-        features, hog_image = hog(img, orientations=orient, pixels_per_cell=(pix_per_cell, pix_per_cell),
-                                  cells_per_block=(cell_per_block, cell_per_block), transform_sqrt=False,
-                                  visualise=True, feature_vector=False)
-        return features, hog_image
-    else:
-        features = hog(img, orientations=orient, pixels_per_cell=(pix_per_cell, pix_per_cell),
+    #if vis == True:
+    #    features, hog_image = hog(img, orientations=orient, pixels_per_cell=(pix_per_cell, pix_per_cell),
+    #                              cells_per_block=(cell_per_block, cell_per_block), transform_sqrt=False,
+    #                              visualise=True, feature_vector=False)
+    #    return features, hog_image
+    #else:
+    features = hog(img, orientations=orient, pixels_per_cell=(pix_per_cell, pix_per_cell),
                        cells_per_block=(cell_per_block, cell_per_block), transform_sqrt=False,
                        visualise=False, feature_vector=feature_vec)
-        return features
+    return features
 
 
 def single_img_features(img_rgb,settings,spatial_feat=True,

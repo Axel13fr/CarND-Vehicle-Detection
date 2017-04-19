@@ -1,5 +1,7 @@
 from slidding_windows import *
 from feature_extraction import *
+from object_extraction import *
+from collections import deque
 
 
 class Pipeline():
@@ -8,6 +10,8 @@ class Pipeline():
         self.scaler = Scaler
         self.settings = settings
         self.debugView = debugView
+
+        self.boxes_history = deque(maxlen=8)
 
         img_shape = (720, 1280, 3)
         # Generate windows here to go faster in processing:
@@ -24,21 +28,22 @@ class Pipeline():
         # Settings shortcuts
         spatial_size = (self.settings.spatial, self.settings.spatial)
         hist_bins = self.settings.histbin
-        draw_img = np.copy(img)
 
         img_tosearch = img[ystart:ystop,xstart:,:]
         ctrans_tosearch = convert_color(img_tosearch, self.settings.cspace)
+        ctrans_tosearch_hsv = convert_color(img_tosearch, 'HSV')
         if scale != 1:
             imshape = ctrans_tosearch.shape
             ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale), np.int(imshape[0]/scale)))
+            ctrans_tosearch_hsv = cv2.resize(ctrans_tosearch_hsv, (np.int(imshape[1] / scale), np.int(imshape[0] / scale)))
+
 
         ch1 = ctrans_tosearch[:,:,0]
         ch2 = ctrans_tosearch[:,:,1]
-        ch3 = ctrans_tosearch[:,:,2]
 
         # Define blocks and steps as above
-        nxblocks = (ch1.shape[1] // self.settings.pix_per_cell)-1
-        nyblocks = (ch1.shape[0] // self.settings.pix_per_cell)-1
+        nxblocks = (ch1.shape[1] // self.settings.pix_per_cell)
+        nyblocks = (ch1.shape[0] // self.settings.pix_per_cell)
         # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
         window = 64 # Window size
         nblocks_per_window = (window // self.settings.pix_per_cell)#-1
@@ -51,9 +56,8 @@ class Pipeline():
                                 self.settings.cell_per_block, feature_vec=False)
         hog2 = get_hog_features(ch2, self.settings.orient, self.settings.pix_per_cell,
                                 self.settings.cell_per_block, feature_vec=False)
-        #hog3 = get_hog_features(ch3, self.settings.orient, self.settings.pix_per_cell,
-        #                        self.settings.cell_per_block, feature_vec=False)
-        print("nblocks_per_window",nblocks_per_window," hog1 shape",hog1.shape)
+        # Windows output
+        hot_windows = []
 
         for xb in range(nxsteps):
             for yb in range(nysteps):
@@ -62,8 +66,6 @@ class Pipeline():
                 # Extract HOG for this patch
                 hog_feat1 = hog1[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
                 hog_feat2 = hog2[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
-                #hog_feat3 = hog3[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
-                #hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
                 hog_features = np.hstack((hog_feat1, hog_feat2))
 
                 xleft = xpos*self.settings.pix_per_cell
@@ -74,35 +76,70 @@ class Pipeline():
 
                 # Get color features
                 spatial_features = bin_spatial(subimg, size=spatial_size)
-                # Color hist expects RGB as input
-                subimg_rgb = cv2.cvtColor(subimg,cv2.COLOR_YUV2RGB)
-                hist_features = color_hist(subimg_rgb, nbins=hist_bins)
-                #hist_features = color_hist(subimg, nbins=hist_bins)
+                # Color hist expects HSV as input
+                subimg_hsv =  cv2.resize(ctrans_tosearch_hsv[ytop:ytop+window, xleft:xleft+window], (64,64))
+                hist_features = color_hist(subimg_hsv, nbins=hist_bins)
 
                 # Scale features and make a prediction
                 test_features = \
                     self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
-                #test_features = X_scaler.transform(np.hstack((shape_feat, hist_feat)).reshape(1, -1))
                 test_prediction = self.svc.predict(test_features)
 
                 # If found something
-                if test_prediction == 1:
-                #if True:
+                if self.debugView:
+                    xbox_left = np.int(xleft * scale)
+                    ytop_draw = np.int(ytop * scale)
+                    win_draw = np.int(window * scale)
+                    hot_windows.append(((xbox_left + xstart, ytop_draw + ystart),
+                                        (xbox_left + win_draw + xstart, ytop_draw + win_draw + ystart)))
+                elif test_prediction == 1:
                     xbox_left = np.int(xleft*scale)
                     ytop_draw = np.int(ytop*scale)
                     win_draw = np.int(window*scale)
-                    cv2.rectangle(draw_img,(xbox_left + xstart, ytop_draw+ystart),
-                                  (xbox_left+win_draw + xstart,ytop_draw+win_draw+ystart),
-                                  (0,0,1.0),6)
+                    hot_windows.append(((xbox_left + xstart, ytop_draw+ystart),
+                                  (xbox_left+win_draw + xstart,ytop_draw+win_draw+ystart)))
+
+        return hot_windows
+
+    def filter_detections(self,img_rgb,boxes):
+
+        # Add boxes to history
+        self.boxes_history.append(boxes)
+
+        # Produce heat map using boxes history : Add heat to each box in box list
+        heat = np.zeros_like(img_rgb[:, :, 0]).astype(np.float)
+        for boxes in self.boxes_history:
+            heat = add_heat(heat, boxes)
+
+        # Apply threshold to help remove false positives
+        heat = apply_threshold(heat, 6)
+
+        # Visualize the heatmap when displaying
+        heatmap = np.clip(heat, 0, 255)
+
+        # Find final boxes from heatmap using label function
+        labels = label(heatmap)
+        draw_img = draw_labeled_bboxes(np.copy(img_rgb), labels)
 
         return draw_img
 
     def process(self,img_rgb):
         # Scaling back to [0,1] just as when from video file
         img_rgb = img_rgb.astype(np.float32) / 255
-        hot_windows = search_windows(img_rgb, self.windows, self.svc, self.scaler, self.settings)
         draw_image = np.copy(img_rgb)*255
-        return draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
+
+        #detections = self.find_cars(img_rgb, 400, 550, 20, 1)
+        #detections = self.find_cars(img_rgb, 370, 650, 40, 1.3)
+        #detections += self.find_cars(img_rgb, 400, 700, 60, 1.8)
+        #detections = self.find_cars(img_rgb, 370, 650, 40, 1.2)
+
+        detections = self.find_cars(img_rgb, 400, 650, 40, 1.3)
+        detections += self.find_cars(img_rgb, 400, 700, 30, 1.5)
+
+        self.filter_detections(img_rgb,detections)
+        # Draw results
+        #return draw_boxes(draw_image, detections, color=(0, 0, 255), thick=6)
+        return self.filter_detections(draw_image, detections)
 
 
 def run_video(svc,Scaler,settings):
@@ -110,6 +147,6 @@ def run_video(svc,Scaler,settings):
     output = 'project_output.mp4'
     clip2 = VideoFileClip('project_video.mp4')
 
-    pipeline = Pipeline(svc,Scaler,settings,debugView=True)
+    pipeline = Pipeline(svc,Scaler,settings,debugView=False)
     challenge_clip = clip2.fl_image(pipeline.process)
     challenge_clip.write_videofile(output, audio=False)

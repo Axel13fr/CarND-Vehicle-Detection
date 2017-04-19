@@ -119,9 +119,6 @@ class Model():
         print("The best parameters are %s with a score of %0.2f"
               % (grid.best_params_, grid.best_score_))
 
-        # Check the score of the SVC
-        #print('Test Accuracy of SVC = ', round(grid.score(X_test, y_test), 4))
-
         self.model = grid
 
         # Save the trained model
