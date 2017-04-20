@@ -56,7 +56,7 @@ Some other channels will show different features which might be useful for later
 
 ![HOG output][hog_yuv]
 
-####2. Explain how you settled on your final choice of HOG parameters.
+#### 2. Explain how you settled on your final choice of HOG parameters.
 
 I tried various combinations of parameters and my final choice was driven by the classifier performance when training it on HOG features alone. Here are my statistics for the different channels and then combined:
 - HSV : 0 gives 0.93, 1 gives 0.88, 2 gives 0.94, ALL gives 0,97
@@ -66,25 +66,34 @@ I applied the same idea to find out the influence of other parameters, for examp
 - orient = 6 # 9 gives 0.93, 6 gives 0.92
 - pix_per_cell = 12 # 8 gives 0,93, 10 gives 0.92, 12 gives 0.92
 - cell_per_block: 1 gives 0.93, 2 gives 0.94
+
 In the end, my goal was to have a feature vector as small as possible (runs faster, trains faster, less prone to overfit...) so I decided to use parameters which would minimize it without impacting performance too much. So for example orientation and cell_per_block could be reduced with minimal performance loss while greatly reducing the feature vector size as shown by the statistics above.
 I used the same trick when selecting only Y and U channels instead of all as the difference when using YUV is less than 1%.
 
 So my final parameters were: `orientations=6`, `pixels_per_cell=(12, 12)`, `cells_per_block=(1, 1)` applied on Y and U Channels
 
 
-####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+#### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+I trained a linear SVC using the Model class defined in the `train.py`. I used a gridsearch over the C parameter to find the best result.
 
-###Sliding Window Search
+Instead of a simple traning split, I used a [Stratified shuffle](http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedShuffleSplit.html#sklearn.model_selection.StratifiedShuffleSplit) split which does 5 splits of the data, uses one split as test set and the 4 other as training set and then rotates, while making sure that there is about the same number of positive and negative examples. This was used as a strategy to reduce overfitting.
 
-####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+Most importantly, I first trained my SVC on one type of feature alone to see how good it could perform and how much I could reduce to minimize the feature vector size without impacting performance. See above for an explanation on the HOG features parameters. 
+
+Using this strategy, while training on color histogram feature alone, I found out that YUV was not as good as the HSV performance so I decided to build my color histogram on 30 bins using HSV color space specifically. This color classification alone could get me over 85% alone.
+
+When combined with spatial features (15 by 15) and hog features, my classifier got a 99% score after a 5-fold split training, trained on provided vehicle and not vehicles dataset of the project without any augmentation (about 17000 samples). 
+
+### Sliding Window Search
+
+#### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
 I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
 
 ![alt text][image3]
 
-####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+#### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
 
@@ -93,11 +102,11 @@ Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spat
 
 ### Video Implementation
 
-####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
+Here's a [link to my video result](./project_output.mp4)
 
 
-####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
+#### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
 I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
 
