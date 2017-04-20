@@ -147,9 +147,22 @@ I then used `scipy.ndimage.measurements.label()` to identify individual blobs in
 
 ---
 
-###Discussion
+### Discussion
 
-####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
 Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+
+There are several things to consider to generalize this approach and make it work for more cases:
+- SVM side:
+* use more training data to make it more robust (I only used the kit provided with the project, not even udacity data)
+* apply another data split pattern to cope with time series and avoid overfit on these [TimeSeriesSplit for example](http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html#sklearn.model_selection.TimeSeriesSplit)
+* use data augmentation to produce more samples without new data (resize, minor rotation, flip...)
+
+- Slidding windows & False positives filtering:
+* the approach taken here has been strongly optimized for the project video to show no false positives and nearby cars at all frames, this will most likely fail in other videos 
+* use a statistical validation of the whole pipeline to truly measure the performances on hours of video --> this shall help choosing parameters (basically applying a grid search method on several hours of labeled videos to derive KPIs for each parameter combination and choose the best !)
+* The heatmap approach could be improved by using the output probability of the SVM and add a count depending on it instead of always adding +1 (more trust in detection = more contribution to heatmap)
+
+In general, this approach is not sufficient by itself to really act on vehicle information as it is too sensible to other problems such as bad weather, low light or dirty camera lens. It has to be confirmed by other kind of sensors together to have a reliable system, basically applying sensor fusion :=)
 
