@@ -31,6 +31,7 @@ The goals / steps of this project are the following:
 [test4]: ./output_images/test4.png
 [win1]: ./output_images/windows1.png
 [win2]: ./output_images/windows2.png
+[heatmaps]: ./output_images/heatmaps.png
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -137,20 +138,11 @@ I recorded the positions of positive detections in each frame of the video and s
 
 From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions: a threshold of 6 detections was applied so 6 detections are required over the last 8 frames with each frame contributing very often to more than one detection per vehicle because of the 2 different slidding window sizes and the 75% overlapping.
 
-I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected as seen in the filter_detections() function.  
+I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected as seen in the filter_detections() function. For the sake of illustration, the same frame was run 3 times in a raw for each of the example below to generate bounding boxes and go accross false detection threshold.
 
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
+### Here are 2 frames, their corresponding heatmaps and the bounding box results:
 
-### Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
+![alt text][heatmaps]
 
 
 ---
