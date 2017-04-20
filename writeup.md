@@ -133,7 +133,11 @@ Here's a [link to my video result](./project_output.mp4)
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+I recorded the positions of positive detections in each frame of the video and saved them into a FIFO with a fixed size of 8: it will accumulate all detections from the last 8 frames (see filter_detections() in the `pipeline.py` file).
+
+From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions: a threshold of 6 detections was applied so 6 detections are required over the last 8 frames with each frame contributing very often to more than one detection per vehicle because of the 2 different slidding window sizes and the 75% overlapping.
+
+I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected as seen in the filter_detections() function.  
 
 Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
 
