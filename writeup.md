@@ -1,5 +1,4 @@
-##Writeup Template
-###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+
 
 ---
 
@@ -24,21 +23,24 @@ The goals / steps of this project are the following:
 [image7]: ./examples/output_bboxes.png
 [video1]: ./project_video.mp4
 
+[hog]: ./output_images/hog_rgb.png
+[hog_yuv]: ./output_images/hog_yuv.png
+
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
-###Writeup / README
+### Writeup / README
 
-####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
+#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
 
 You're reading it!
 
-###Histogram of Oriented Gradients (HOG)
+### Histogram of Oriented Gradients (HOG)
 
-####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
+#### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+The code for this step is located in the `feature_extraction.py` (in lines 86 through 96).  
 
 I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
@@ -46,14 +48,29 @@ I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an 
 
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
+My conclusion on this experiment was that RGB color space didn't add a lot of information between R, G and B channels, which is not suprising as this color space doesn't seperate well chroma from lumina or saturation unlike HSV or YUV. 
 
+![HOG output][hog]
 
-![alt text][image2]
+Some other channels will show different features which might be useful for later classification, as demosntrated here in an example using the `YUV` color space and HOG parameters of `orientations=6`, `pixels_per_cell=(12, 12)` and `cells_per_block=(1, 1)`:
+
+![HOG output][hog_yuv]
 
 ####2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+I tried various combinations of parameters and my final choice was driven by the classifier performance when training it on HOG features alone. Here are my statistics for the different channels and then combined:
+- HSV : 0 gives 0.93, 1 gives 0.88, 2 gives 0.94, ALL gives 0,97
+- YUV : 0 gives 0.94, 1 gives 0.94, 2 gives 0.90, ALL gives 0,98
+- YU from YUV: 0.97
+I applied the same idea to find out the influence of other parameters, for example:  
+- orient = 6 # 9 gives 0.93, 6 gives 0.92
+- pix_per_cell = 12 # 8 gives 0,93, 10 gives 0.92, 12 gives 0.92
+- cell_per_block: 1 gives 0.93, 2 gives 0.94
+In the end, my goal was to have a feature vector as small as possible (runs faster, trains faster, less prone to overfit...) so I decided to use parameters which would minimize it without impacting performance too much. So for example orientation and cell_per_block could be reduced with minimal performance loss while greatly reducing the feature vector size as shown by the statistics above.
+I used the same trick when selecting only Y and U channels instead of all as the difference when using YUV is less than 1%.
+
+So my final parameters were: `orientations=6`, `pixels_per_cell=(12, 12)`, `cells_per_block=(1, 1)` applied on Y and U Channels
+
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
